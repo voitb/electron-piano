@@ -7,10 +7,7 @@ import * as path from "path";
 console.log("aha XD");
 
 contextBridge.exposeInMainWorld("electron", {
-	fs: {
-		readFile: fs.readFile,
-		// dodaj inne metody, które chcesz udostępnić
-	},
+	fs: fs,
 	path: path,
 	appPath: path.resolve(__dirname),
 	cwd: process.cwd,
