@@ -1,0 +1,41 @@
+.piano {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100vh;
+	background: #eee;
+}
+
+.piano-key {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 80px;
+	width: 30px;
+	margin: 1px;
+	border: 1px solid #333;
+	border-radius: 5px;
+	user-select: none;
+	cursor: pointer;
+}
+
+.white-key {
+	background: #fff;
+	color: #333;
+	z-index: 1;
+}
+
+.black-key {
+	background: #333;
+	color: #fff;
+	height: 60px;
+	width: 20px;
+	position: relative;
+	z-index: 2;
+	margin-left: -10px;
+	margin-right: -10px;
+}
+
+.active {
+	background: yellow;
+}
