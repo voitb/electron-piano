@@ -19,27 +19,20 @@ if (require("electron-squirrel-startup")) {
 const generateMidi = () => {
 	const midiData = fs.readFileSync("./src/assets/mozart.mid");
 	const midi = new Midi(midiData);
-	console.log(midi);
-	console.log(midi.tracks[0].notes);
 	return midi;
-	// console.log(Tone);
-	// const synth = new Tone.Synth().toDestination();
-	// Tone.start();
-	// midi.tracks[0].notes.forEach((note) => {
-	// 	synth.triggerAttackRelease(
-	// 		note.name,
-	// 		note.duration,
-	// 		note.time,
-	// 		note.velocity
-	// 	);
-	// });
 };
 
-async function handleFileOpen() {
-	const { canceled, filePaths } = await dialog.showOpenDialog({});
-	if (!canceled) {
-		return filePaths[0];
-	}
+const generatePiano = () => {
+	const piano = fs.readFileSync("./src/assets/piano.mp3");
+	console.log(piano);
+	return piano;
+};
+
+function handleFileOpen() {
+	const midiData = fs.readFileSync("./src/assets/mozart.mid");
+	const midi = new Midi(midiData);
+	console.log(midi);
+	return midi.tracks[0].notes;
 }
 
 const createWindow = (): void => {
@@ -66,11 +59,20 @@ const createWindow = (): void => {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
 	createWindow();
-	ipcMain.handle("dialog:openFile", handleFileOpen);
-});
-
-ipcMain.on("dialog:openFile", () => {
-	console.log(" XD");
+	ipcMain.on("dialog:openFile", handleFileOpen);
+	ipcMain.on("dialog:mp3File", generatePiano);
+	ipcMain.on("generate", (event) => {
+		console.log("generate");
+		const value = handleFileOpen();
+		console.log(value);
+		event.sender.send("hehe", value);
+	});
+	ipcMain.on("generateMP3", (event) => {
+		console.log("generateMP3");
+		const value = generatePiano();
+		console.log(value);
+		event.sender.send("heheMP3", value);
+	});
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Synth } from "tone";
+import "./style.css";
 
 // ...
 
@@ -13,6 +14,34 @@ import { Synth } from "tone";
 //  Pamiętaj, że w zależności od konkretnego systemu, który używasz, możesz potrzebować
 //  innej konwersji dla oktawy. Niektóre systemy mogą na przykład traktować C4 jako MIDI 60,
 //  podczas gdy inne mogą traktować C5 jako MIDI 60.
+const notes = [
+	"C4",
+	"C#4",
+	"D4",
+	"D#4",
+	"E4",
+	"F4",
+	"F#4",
+	"G4",
+	"G#4",
+	"A4",
+	"A#4",
+	"B4",
+	"C5",
+	"C#5",
+	"D5",
+	"D#5",
+	"E5",
+	"F5",
+	"F#5",
+	"G5",
+	"G#5",
+	"A5",
+	"A#5",
+	"B5",
+	"C6",
+];
+
 function midiToNote(midiValue) {
 	const notes = [
 		"C",
@@ -28,6 +57,7 @@ function midiToNote(midiValue) {
 		"A#",
 		"B",
 	];
+
 	const octave = Math.floor(midiValue / 12); // Octave is calculated by dividing by 12
 	const key = notes[midiValue % 12]; // Key is calculated by modulo operation with 12 to get the remainder
 
@@ -37,8 +67,14 @@ function midiToNote(midiValue) {
 const App: React.FC = () => {
 	const synth = useRef(new Synth().toDestination());
 	const [chords, setChords] = useState([]);
+	const [activeKeys, setActiveKeys] = useState([]);
+
+	const [activeNote, setActiveNote] = useState(null); // dodaj stan dla aktywnego klawisza
+
 	useEffect(() => {
-		window.electronAPI.receive("app_ready", () => {});
+		window.electronAPI.receive("app_ready", () => {
+			console.log("aha");
+		});
 
 		const updateDevices = (event) => {
 			console.log(
@@ -49,7 +85,7 @@ const App: React.FC = () => {
 		const noteOn = (note, velocity) => {
 			const synth = new Synth().toDestination();
 			let noteString = midiToNote(note);
-
+			console.log(note, velocity, noteString);
 			if (noteString) {
 				let duration = "8n";
 				if (velocity < 64) {
@@ -60,31 +96,33 @@ const App: React.FC = () => {
 				let midiVelocity = 64; // Example MIDI velocity
 				let toneVelocity = midiVelocity / 127; // Normalize to 0-1 range
 
-				// każdy z wywołanych synthów musi zostać zagrany jako osobny dźwięk -> nie może
-				// być zagrane kilka nut a jednym synthie.
 				synth.triggerAttackRelease(
 					noteString,
 					duration,
 					undefined,
 					toneVelocity
 				);
-				// setChords((prev) => [...prev, { note: noteString, duration }]);
+				// Dodanie tego klawisza do listy aktywnych klawiszy
+				setActiveKeys((prevKeys) => [...prevKeys, noteString]);
 			} else {
-				// setChords((prev) => prev.filter((chord) => chord.note !== noteString));
 				synth.dispose();
 				console.log(`No note mapping for MIDI number: ${note}`);
 			}
 		};
 
+		// Zmiana funkcji noteOff
 		const noteOff = (note) => {
+			console.log(note);
 			let noteString = midiToNote(note);
 
-			// setChords((prev) => prev.filter((chord) => chord.note !== noteString));
+			// Usunięcie tego klawisza z listy aktywnych klawiszy
+			setActiveKeys((prevKeys) => prevKeys.filter((key) => key !== noteString));
 
 			console.log(`No note mapping for MIDI number: ${note}`);
 		};
 
 		const handleInput = (input) => {
+			console.log(input, "input");
 			const [command, note, velocity] = input.data;
 			switch (command) {
 				case 144: // noteOn
@@ -100,10 +138,14 @@ const App: React.FC = () => {
 		};
 
 		const success = (midiAccess) => {
+			console.log(midiAccess);
+			// midiAccess.onstatechange = updateDevices;
 			midiAccess.addEventListener("statechange", updateDevices);
 
 			const inputs = midiAccess.inputs;
+			console.log(inputs);
 			inputs.forEach((input) => {
+				// console.log(input);
 				input.onmidimessage = handleInput;
 				input.addEventListener("midimessage", handleInput);
 			});
@@ -116,15 +158,35 @@ const App: React.FC = () => {
 			navigator.requestMIDIAccess().then(success, failure);
 		}
 	}, []);
+	const playNote = (note) => {
+		setActiveKeys((prevKeys) => [...prevKeys, note]);
+
+		setActiveNote(note); // ustaw aktywną nutę
+		synth.current.triggerAttackRelease(note, "8n"); // graj nutę
+	};
+
+	const stopNote = () => {
+		setActiveKeys((prevKeys) => prevKeys.filter((key) => key !== note));
+
+		setActiveNote(null); // zresetuj aktywną nutę
+	};
 
 	return (
-		<div
-			onClick={async () => {
-				const filePath = await window.electronAPI.openFile();
-				// filePathElement.innerText = filePath
-			}}
-		>
-			xd
+		<div>
+			<div className="piano">
+				{notes.map((note) => (
+					<div
+						key={note}
+						className={`piano-key ${
+							note.includes("#") ? "black-key" : "white-key"
+						} ${activeKeys.includes(note) ? "active" : ""}`}
+						onMouseDown={() => playNote(note)}
+						onMouseUp={() => stopNote(note)}
+					>
+						{note}
+					</div>
+				))}
+			</div>
 		</div>
 	);
 };

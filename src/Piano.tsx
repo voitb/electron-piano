@@ -1,194 +1,113 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Synth } from "tone";
+// Komponent Klawisza
+import React, { useEffect, useRef } from "react";
 import "./style.css";
 
-// ...
-
-// funkcja zmieniająca nr klawisza z midi na nutę.
-
-// Ta funkcja działa poprzez obliczenie oktawy i klucza dla danej wartości MIDI.
-// Określa oktawę, dzieląc wartość MIDI przez 12 i odejmując 1. Następnie określa klucz,
-// obliczając resztę z dzielenia wartości MIDI przez 12 i korzystając z tej reszty do
-// indeksowania tablicy notes.
-
-//  Pamiętaj, że w zależności od konkretnego systemu, który używasz, możesz potrzebować
-//  innej konwersji dla oktawy. Niektóre systemy mogą na przykład traktować C4 jako MIDI 60,
-//  podczas gdy inne mogą traktować C5 jako MIDI 60.
-const notes = [
-	"C4",
-	"C#4",
-	"D4",
-	"D#4",
-	"E4",
-	"F4",
-	"F#4",
-	"G4",
-	"G#4",
-	"A4",
-	"A#4",
-	"B4",
-	"C5",
-	"C#5",
-	"D5",
-	"D#5",
-	"E5",
-	"F5",
-	"F#5",
-	"G5",
-	"G#5",
-	"A5",
-	"A#5",
-	"B5",
-	"C6",
-];
-
-function midiToNote(midiValue) {
-	const notes = [
-		"C",
-		"C#",
-		"D",
-		"D#",
-		"E",
-		"F",
-		"F#",
-		"G",
-		"G#",
-		"A",
-		"A#",
-		"B",
-	];
-
-	const octave = Math.floor(midiValue / 12); // Octave is calculated by dividing by 12
-	const key = notes[midiValue % 12]; // Key is calculated by modulo operation with 12 to get the remainder
-
-	return key + octave;
-}
-
-const App: React.FC = () => {
-	const synth = useRef(new Synth().toDestination());
-	const [chords, setChords] = useState([]);
-	const [activeKeys, setActiveKeys] = useState([]);
-
-	const [activeNote, setActiveNote] = useState(null); // dodaj stan dla aktywnego klawisza
+const Oscillator = ({
+	note,
+	isActive,
+	midiId,
+	type,
+	handleMouseDown,
+	handleMouseUp,
+}) => {
+	const oscillator = useRef(null);
+	const audioContext = useRef(null);
 
 	useEffect(() => {
-		window.electronAPI.receive("app_ready", () => {
-			console.log("aha");
-		});
-
-		const updateDevices = (event) => {
-			console.log(
-				`Name ${event.port.name}, brand: ${event.port.manufacturer}, State, ${event.port.state}, Type: ${event.port.type}`
-			);
-		};
-
-		const noteOn = (note, velocity) => {
-			const synth = new Synth().toDestination();
-			let noteString = midiToNote(note);
-			console.log(note, velocity, noteString);
-			if (noteString) {
-				let duration = "8n";
-				if (velocity < 64) {
-					duration = "16n";
-				} else if (velocity < 128) {
-					duration = "8n";
-				}
-				let midiVelocity = 64; // Example MIDI velocity
-				let toneVelocity = midiVelocity / 127; // Normalize to 0-1 range
-
-				synth.triggerAttackRelease(
-					noteString,
-					duration,
-					undefined,
-					toneVelocity
-				);
-				// Dodanie tego klawisza do listy aktywnych klawiszy
-				setActiveKeys((prevKeys) => [...prevKeys, noteString]);
-			} else {
-				synth.dispose();
-				console.log(`No note mapping for MIDI number: ${note}`);
-			}
-		};
-
-		// Zmiana funkcji noteOff
-		const noteOff = (note) => {
-			console.log(note);
-			let noteString = midiToNote(note);
-
-			// Usunięcie tego klawisza z listy aktywnych klawiszy
-			setActiveKeys((prevKeys) => prevKeys.filter((key) => key !== noteString));
-
-			console.log(`No note mapping for MIDI number: ${note}`);
-		};
-
-		const handleInput = (input) => {
-			console.log(input, "input");
-			const [command, note, velocity] = input.data;
-			switch (command) {
-				case 144: // noteOn
-					if (velocity > 0) {
-						// Only play sound for non-zero velocities
-						noteOn(note, velocity);
-					}
-					break;
-				case 128: // noteOff
-					noteOff(note);
-					break;
-			}
-		};
-
-		const success = (midiAccess) => {
-			console.log(midiAccess);
-			// midiAccess.onstatechange = updateDevices;
-			midiAccess.addEventListener("statechange", updateDevices);
-
-			const inputs = midiAccess.inputs;
-			console.log(inputs);
-			inputs.forEach((input) => {
-				// console.log(input);
-				input.onmidimessage = handleInput;
-				input.addEventListener("midimessage", handleInput);
-			});
-		};
-		const failure = () => {
-			console.log("Failure");
-		};
-
-		if (navigator.requestMIDIAccess) {
-			navigator.requestMIDIAccess().then(success, failure);
-		}
+		audioContext.current = new (window.AudioContext ||
+			window.webkitAudioContext)();
 	}, []);
-	const playNote = (note) => {
-		setActiveKeys((prevKeys) => [...prevKeys, note]);
 
-		setActiveNote(note); // ustaw aktywną nutę
-		synth.current.triggerAttackRelease(note, "8n"); // graj nutę
-	};
+	useEffect(() => {
+		if (isActive) {
+			oscillator.current = audioContext.current.createOscillator();
+			oscillator.current.type = "sine";
+			oscillator.current.frequency.value =
+				Math.pow(2, (midiId - 69) / 12) * 440; // formula to convert MIDI note to frequency
+			oscillator.current.connect(audioContext.current.destination);
+			oscillator.current.start();
+		} else {
+			if (oscillator.current) {
+				oscillator.current.stop();
+				oscillator.current.disconnect();
+			}
+		}
 
-	const stopNote = () => {
-		setActiveKeys((prevKeys) => prevKeys.filter((key) => key !== note));
-
-		setActiveNote(null); // zresetuj aktywną nutę
-	};
+		return () => {
+			if (oscillator.current) {
+				oscillator.current.stop();
+				oscillator.current.disconnect();
+			}
+		};
+	}, [isActive]);
 
 	return (
-		<div>
-			<div className="piano">
-				{notes.map((note) => (
-					<div
-						key={note}
-						className={`piano-key ${
-							note.includes("#") ? "black-key" : "white-key"
-						} ${activeKeys.includes(note) ? "active" : ""}`}
-						onMouseDown={() => playNote(note)}
-						onMouseUp={() => stopNote(note)}
-					>
-						{note}
-					</div>
-				))}
-			</div>
+		<div
+			className={`piano-key ${type} ${isActive ? "active" : ""}`}
+			onMouseDown={() => handleMouseDown(midiId)}
+			onMouseUp={() => handleMouseUp(midiId)}
+		>
+			{note}
 		</div>
 	);
 };
 
-export default App;
+// Komponent Pianina
+import React, { useState, useEffect } from "react";
+
+const Piano = () => {
+	const [activeNotes, setActiveNotes] = useState([]);
+
+	useEffect(() => {
+		const handleMIDIMessage = ({ data }) => {
+			const [command, note, velocity] = data;
+			console.log(data);
+			switch (command) {
+				case 144: // noteOn
+					if (velocity > 0) {
+						// Only play sound for non-zero velocities
+						setActiveNotes((prev) => [...prev, note]);
+					}
+					break;
+				case 128: // noteOff
+					setActiveNotes((prev) => prev.filter((n) => n !== note));
+					break;
+			}
+		};
+
+		navigator.requestMIDIAccess().then((access) => {
+			for (let input of access.inputs.values()) {
+				input.onmidimessage = handleMIDIMessage;
+			}
+		});
+	}, []);
+
+	const noteRange = Array.from({ length: 25 }, (_, i) => 60 + i); // MIDI note numbers from C4 (60) to C6 (84)
+	const whiteNotes = [0, 2, 4, 5, 7, 9, 11]; // MIDI note numbers for white keys (C, D, E, F, G, A, B)
+
+	const handleMouseDown = (midiId) => {
+		setActiveNotes((prev) => [...prev, midiId]);
+	};
+
+	const handleMouseUp = (midiId) => {
+		setActiveNotes((prev) => prev.filter((n) => n !== midiId));
+	};
+
+	return (
+		<div>
+			{noteRange.map((midiId) => (
+				<Oscillator
+					key={midiId}
+					note={midiId}
+					isActive={activeNotes.includes(midiId)}
+					midiId={midiId}
+					type={whiteNotes.includes(midiId % 12) ? "white" : "black"}
+					handleMouseDown={handleMouseDown}
+					handleMouseUp={handleMouseUp}
+				/>
+			))}
+		</div>
+	);
+};
+
+export default Piano;

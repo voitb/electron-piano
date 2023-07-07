@@ -4,11 +4,20 @@ import { contextBridge, ipcRenderer, ipcMain } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 
-console.log("aha XD");
-
 contextBridge.exposeInMainWorld("electronAPI", {
-	openFile: () => ipcRenderer.invoke("dialog:openFile"),
-	ipcRenderer,
+	mp3File: () => ipcRenderer.invoke("dialog:mp3File"),
+	ipcRenderer: {
+		...ipcRenderer,
+		on(channel: Channels, func: (...args: unknown[]) => void) {
+			const subscription = (_event: IpcRendererEvent, ...args: unknown[]) =>
+				func(...args);
+			ipcRenderer.on(channel, subscription);
+
+			return () => {
+				ipcRenderer.removeListener(channel, subscription);
+			};
+		},
+	},
 	receive: (channel, func) => {
 		let validChannels = ["app_ready"];
 		if (validChannels.includes(channel)) {
@@ -16,4 +25,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			ipcRenderer.on(channel, (event, ...args) => func(...args));
 		}
 	},
+	openFile: () => ipcRenderer.send("dialog:openFile"),
+	mp3File: () => ipcRenderer.send("dialog:mp3File"),
 });

@@ -1,0 +1,25 @@
+/* style.css */
+.piano-key {
+	width: 30px;
+	height: 120px;
+	border: 1px solid black;
+	background: white;
+	float: left;
+	box-sizing: border-box;
+	position: relative;
+}
+
+.piano-key.active {
+	background: yellow;
+}
+
+.piano-key.black {
+	background: black;
+	height: 80px;
+	width: 20px;
+	position: absolute;
+	top: 0;
+	left: 50%;
+	margin-left: -10px;
+	z-index: 1;
+}

@@ -1,9 +1,11 @@
 import * as ReactDOM from "react-dom";
 import App from "./App";
-import Piano from "./Piano";
+import PianoOld from "./Piano";
+import Piano from "./Piano/Piano";
 
 function render() {
 	// ReactDOM.render(<App />, document.body);
+	// ReactDOM.render(<PianoOld />, document.body);
 	ReactDOM.render(<Piano />, document.body);
 }
 
