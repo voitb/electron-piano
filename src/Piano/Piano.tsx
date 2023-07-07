@@ -7,7 +7,7 @@ import PianoCanvas from "./PianoCanvas";
 // todo na niedzielę, albo nawet sobotę wieczór. Yeetnij pianino skąś
 // dostosuj do tego co masz zrobione. Lecimy już z real live appką
 // jak coś będziesz potrzebował dalej to sobie będziesz na tym playgroudzie
-// sprawdzać
+// sprawdzać https://codingnepalweb.com/demos/playable-piano-javascript/ raczej
 
 const Piano = () => {
 	const [activeNotes, setActiveNotes] = useState([]);
